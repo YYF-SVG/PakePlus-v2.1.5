@@ -1,32 +1,355 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="stylesheet" href="styles.css" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus App</title>
-        <script type="module" src="/main.js" defer></script>
-    </head>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>汽车费用追踪V1.52</title>
+    
+    <!-- 本地CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/icons.css">
+    
+    <!-- 本地化JavaScript库 -->
+    <script src="js/xlsx.full.min.js"></script>
+    <script src="js/chart.min.js"></script>
+    <script src="js/chartjs-plugin-datalabels.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 固定定位头部 -->
+        <div class="fixed-header">
+            <header>
+                <h1><span class="icon car-icon"></span> 汽车费用追踪V1.52</h1>
+            </header>
 
-    <body>
-        <main class="container">
-            <h1>Welcome to PakePlus</h1>
-            <form class="row" id="greet-form">
-                <input id="inputValue" placeholder="Enter a something..." />
-            </form>
-            <div class="resultBox">
-                <span>result: </span>
-                <span id="result"></span>
-            </div>
-            <div class="invokeBox">
-                <button id="openUrl">open_url_browser</button>
-                <button id="openUrlNew">open_url_new</button>
-                <button id="runCommand">run_command</button>
-                <button id="downloadFile">download_file</button>
-                <button id="getExeDir">get_exe_dir</button>
-                <button id="getEnvVar">get_env_var</button>
-                <button id="findPort">find_port</button>
-            </div>
-        </main>
-    </body>
+            <!-- 主导航 -->
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-tab="dashboard">
+                    <span class="icon dashboard-icon"></span>
+                    <span>仪表盘</span>
+                </button>
+                <button class="nav-tab" data-tab="charging">
+                    <span class="icon charging-icon"></span>
+                    <span>充电</span>
+                </button>
+                <button class="nav-tab" data-tab="parking">
+                    <span class="icon parking-icon"></span>
+                    <span>停车</span>
+                </button>
+                <button class="nav-tab" data-tab="statistics">
+                    <span class="icon stats-icon"></span>
+                    <span>统计</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- 内容包裹器 -->
+        <div class="content-wrapper">
+            <!-- 仪表盘 -->
+            <section id="dashboard" class="tab-content active">
+                <!-- 数据导出提示 -->
+                <div id="exportInfo" class="export-info">
+                    上次数据备份时间为<span id="lastExportTime">从未导出</span>，你已 <span id="daysSinceExport">0</span> 天未备份数据
+                </div>
+                
+                <!-- 时间选择器 -->
+                <div class="time-selector">
+                    <button class="time-btn active" data-time="month">本月</button>
+                    <button class="time-btn" data-time="year">今年</button>
+                    <button class="time-btn" data-time="total">全部</button>
+                </div>
+
+                <!-- 数据卡片 -->
+                <div class="cards-container">
+                    <div class="card">
+                        <h3><span class="icon calendar-day-icon"></span> 行驶总天数</h3>
+                        <div class="card-value" id="totalDays">0</div>
+                    </div>
+                    <div class="card">
+                        <h3><span class="icon bolt-icon"></span> 百公里电耗</h3>
+                        <div class="card-value" id="electricityPer100km">0 <span class="unit">度/百公里</span></div>
+                    </div>
+                    <div class="card">
+                        <h3><span class="icon charging-icon"></span> 充电费用</h3>
+                        <div class="card-value" id="totalChargingFee">¥0</div>
+                    </div>
+                    <div class="card">
+                        <h3><span class="icon parking-icon"></span> 停车费用</h3>
+                        <div class="card-value" id="totalParkingFee">¥0</div>
+                    </div>
+                    <div class="card">
+                        <h3><span class="icon road-icon"></span> 每公里费用</h3>
+                        <div class="card-value" id="costPerKm">¥0<span class="unit">/公里</span></div>
+                    </div>
+                    <div class="card">
+                        <h3><span class="icon calendar-alt-icon"></span> 每天费用</h3>
+                        <div class="card-value" id="costPerDay">¥0<span class="unit">/天</span></div>
+                    </div>
+                    <div class="card">
+                        <h3><span class="icon battery-icon"></span> 充满次数</h3>
+                        <div class="card-value" id="fullChargeCount">0</div>
+                    </div>
+                    <div class="card">
+                        <h3><span class="icon plug-icon"></span> 总用电度数</h3>
+                        <div class="card-value" id="totalElectricity">0 <span class="unit">度</span></div>
+                    </div>
+                </div>
+
+                <!-- 月度数据 -->
+                <div class="monthly-data">
+                    <h2><span class="icon chart-line-icon"></span> 本月概览</h2>
+                    <div class="cards-container">
+                        <div class="card">
+                            <h3>本月里程</h3>
+                            <div class="card-value" id="monthlyMileage">0 <span class="unit">公里</span></div>
+                        </div>
+                        <div class="card">
+                            <h3>本月总充电量</h3>
+                            <div class="card-value" id="monthlyChargingAmount">0 <span class="unit">度</span></div>
+                        </div>
+                        <div class="card">
+                            <h3>本月充电费用</h3>
+                            <div class="card-value" id="monthlyChargingFee">¥0</div>
+                        </div>
+                        <div class="card">
+                            <h3>本月停车费</h3>
+                            <div class="card-value" id="monthlyParkingFee">¥0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数据备份/恢复 -->
+                <div class="backup-restore">
+                    <h2><span class="icon database-icon"></span> 数据备份/恢复</h2>
+                    <div class="export-import">
+                        <button id="exportExcel" class="action-btn">
+                            <span class="icon export-icon"></span> 导出Excel
+                        </button>
+                        <input type="file" id="importExcel" accept=".xlsx, .xls, .csv" style="display: none;">
+                        <button id="importBtn" class="action-btn">
+                            <span class="icon import-icon"></span> 导入Excel
+                        </button>
+                        <button id="clearAllData" class="action-btn danger-btn">
+                            <span class="icon trash-icon"></span> 数据清零
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 充电记录 -->
+            <section id="charging" class="tab-content">
+                <h2><span class="icon charging-icon"></span> 充电</h2>
+                
+                <!-- 录入方式选择 -->
+                <div class="input-method">
+                    <button class="method-btn active" data-method="text">
+                        <span class="icon keyboard-icon"></span> 表单输入
+                    </button>
+                    <button class="method-btn" data-method="quick">
+                        <span class="icon bolt-icon"></span> 快速输入
+                    </button>
+                </div>
+
+                <!-- 文字输入表单 -->
+                <form id="chargingForm" class="input-form">
+                    <input type="hidden" id="editRecordId" value="">
+                    <div id="chargingSuccess" class="success-message">
+                        <span class="icon check-icon"></span> 充电记录保存成功！
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="chargingDate"><span class="icon calendar-icon"></span> 日期</label>
+                            <input type="date" id="chargingDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="chargingMileage"><span class="icon tachometer-icon"></span> 里程 (公里)</label>
+                            <input type="number" id="chargingMileage" step="1" required placeholder="充电时总里程">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><span class="icon battery-icon"></span> 是否充满</label>
+                            <div class="radio-group">
+                                <button type="button" class="radio-btn" data-value="true">是</button>
+                                <button type="button" class="radio-btn active" data-value="false">否</button>
+                            </div>
+                            <input type="hidden" id="isFull" value="false">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="chargingAmount"><span class="icon bolt-icon"></span> 充电量 (度)</label>
+                            <input type="number" id="chargingAmount" step="0.01" placeholder="输入2项自动计算">
+                        </div>
+                        <div class="form-group">
+                            <label for="electricityPrice"><span class="icon tag-icon"></span> 电费单价 (元/度)</label>
+                            <input type="number" id="electricityPrice" step="0.01" placeholder="输入2项自动计算">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="chargingCost"><span class="icon money-icon"></span> 本次充电费用 (元)</label>
+                            <input type="number" id="chargingCost" step="0.01" placeholder="输入2项自动计算">
+                        </div>
+                    </div>
+                    <button type="button" class="reset-btn"><span class="icon reset-icon"></span> 输入框归零</button>
+                    <button type="submit" class="submit-btn"><span class="icon save-icon"></span> 保存记录</button>
+                </form>
+
+                <!-- 快速文本输入区域 -->
+                <div id="quickInput" class="text-input-area hidden">
+                    <div class="input-hint">
+                        <h4><span class="icon info-icon"></span> 快速输入范本：</h4>
+                        <ul>
+                            <li>充电量24度，电费单价1.3元/度</li>
+                            <li>充电量30度，本次充电费用36元</li>
+                            <li>电费单价1.2元/度，本次充电费用36元</li>
+                            <li>日期2026年1月7日，里程1500公里</li>
+                            <li>2026-01-07 1500公里 24度 1.3元 31.2元</li>
+                        </ul>
+                    </div>
+                    <textarea id="quickChargingInput" class="text-input" placeholder="请输入充电记录信息，支持多种格式..."></textarea>
+                    <button id="parseChargingBtn" class="text-input-btn">
+                        <span class="icon magic-icon"></span> 自动解析并填充
+                    </button>
+                </div>
+
+                <!-- 充电记录列表 -->
+                <div class="records-container">
+                    <div class="records-header">
+                        <h3><span class="icon list-icon"></span> 充电记录</h3>
+                        <button class="expand-btn" data-target="charging-records-table">
+                            <span class="icon expand-icon"></span> 展开
+                        </button>
+                    </div>
+                    <div id="charging-records-table" class="records-table-container hidden">
+                        <table class="records-table">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>里程 (公里)</th>
+                                    <th>充电量 (度)</th>
+                                    <th>单价 (元/度)</th>
+                                    <th>费用 (元)</th>
+                                    <th>是否充满</th>
+                                    <th>电耗 (度/百公里)</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="chargingRecords">
+                                <tr>
+                                    <td colspan="8" class="empty-state">暂无充电记录</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 停车记录 -->
+            <section id="parking" class="tab-content">
+                <h2><span class="icon parking-icon"></span> 停车</h2>
+                
+                <!-- 录入方式选择 -->
+                <div class="input-method">
+                    <button class="method-btn active" data-method="text">
+                        <span class="icon keyboard-icon"></span> 表单输入
+                    </button>
+                    <button class="method-btn" data-method="quick">
+                        <span class="icon bolt-icon"></span> 快速输入
+                    </button>
+                </div>
+
+                <!-- 文字输入表单 -->
+                <form id="parkingForm" class="input-form">
+                    <input type="hidden" id="editParkingRecordId" value="">
+                    <div id="parkingSuccess" class="success-message">
+                        <span class="icon check-icon"></span> 停车记录保存成功！
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="parkingDate"><span class="icon calendar-icon"></span> 日期</label>
+                            <input type="date" id="parkingDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="parkingCost"><span class="icon money-icon"></span> 停车费用 (元)</label>
+                            <input type="number" id="parkingCost" step="0.01" required>
+                        </div>
+                    </div>
+                    <button type="button" class="reset-btn"><span class="icon reset-icon"></span> 输入框归零</button>
+                    <button type="submit" class="submit-btn"><span class="icon save-icon"></span> 保存记录</button>
+                </form>
+
+                <!-- 快速文本输入区域 -->
+                <div id="parkingQuickInput" class="text-input-area hidden">
+                    <div class="input-hint">
+                        <h4><span class="icon info-icon"></span> 快速输入范本：</h4>
+                        <ul>
+                            <li>停车费15元</li>
+                            <li>2026年1月7日 停车费20元</li>
+                            <li>2026/01/07 停车费10元</li>
+                            <li>2026-01-07 10元</li>
+                            <li>15元 (自动使用今天日期)</li>
+                        </ul>
+                    </div>
+                    <textarea id="quickParkingInput" class="text-input" placeholder="请输入停车记录信息，支持多种格式..."></textarea>
+                    <button id="parseParkingBtn" class="text-input-btn">
+                        <span class="icon magic-icon"></span> 自动解析并填充
+                    </button>
+                </div>
+
+                <!-- 停车记录列表 -->
+                <div class="records-container">
+                    <div class="records-header">
+                        <h3><span class="icon list-icon"></span> 停车记录</h3>
+                        <button class="expand-btn" data-target="parking-records-table">
+                            <span class="icon expand-icon"></span> 展开
+                        </button>
+                    </div>
+                    <div id="parking-records-table" class="records-table-container hidden">
+                        <table class="records-table">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>费用 (元)</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="parkingRecords">
+                                <tr>
+                                    <td colspan="3" class="empty-state">暂无停车记录</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 详细统计 -->
+            <section id="statistics" class="tab-content">
+                <h2><span class="icon stats-icon"></span> 统计</h2>
+                
+                <!-- 图表容器 -->
+                <div class="charts-container">
+                    <div class="chart-wrapper">
+                        <h3><span class="icon chart-line-icon"></span> 电耗趋势</h3>
+                        <canvas id="electricityChart"></canvas>
+                    </div>
+                    <div class="chart-wrapper cost-chart-wrapper">
+                        <h3><span class="icon chart-pie-icon"></span> 费用构成</h3>
+                        <!-- 增加统计方式切换按钮 -->
+                        <div class="time-selector" style="margin-bottom: 15px;">
+                            <button class="time-btn" data-time="year">年</button>
+                            <button class="time-btn active" data-time="total">全部</button>
+                        </div>
+                        <canvas id="costChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </div> <!-- 关闭content-wrapper -->
+    </div>
+
+    <!-- 本地化JavaScript -->
+    <script src="js/app.js"></script>
+</body>
 </html>
